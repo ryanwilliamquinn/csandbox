@@ -1,5 +1,5 @@
 #include <stdio.h>
-#define MAXLINE 8 /* max input line length */
+#define MAXLINE 1000 /* max input line length */
 
 int getLine(char line[], int maxline);
 void reset(char line[], int max);
@@ -57,10 +57,11 @@ void reverse(char cs[], char rs[], int lim)
 {
   int i, j;
   j = 0;
-  for (i=lim-2; i >= 0; i--) {
+  for (i=lim-1; i >= 0; i--) {
     if (cs[i] != 0 && cs[i] != '\n') {
       rs[j] = cs[i];
       j++;
     } 
   }
+  rs[j] = '\0';
 }

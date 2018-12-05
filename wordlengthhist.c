@@ -1,16 +1,31 @@
 #include <stdio.h>
 
-#define IN 1
-#define OUT 0 
+#define MAXSIZE 10
 
-main()
+int main(void)
 {
-  int c, state;
+  int c, i, j, wordlength;
+  int lengths[MAXSIZE]; 
+  wordlength = 0;
+
+  for (i = 0; i < MAXSIZE; i++)
+    lengths[i] = 0;
 
   while ((c = getchar()) != EOF) {
-    if (c == ' ' || c == '\t' || c == '\n')
-      putchar('\n');
+    if (c == ' ' || c == '\t' || c == '\n') 
+    {
+      lengths[wordlength] = lengths[wordlength] + 1;
+      wordlength = 0;
+    }
     else 
-      putchar('*');
+      wordlength++;
   }
+
+  for (i = 0; i < MAXSIZE; i++) {
+    printf("%d: ", i);
+    for (j = lengths[i]; j > 0; j--)
+      putchar('|');
+    putchar('\n');
+  }
+
 }
