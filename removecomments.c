@@ -13,7 +13,7 @@
  * then look again at the string
  */
 
-#define MAXLINE 80
+#define MAXLINE 120 
 #define ESCAPE_CHAR '\\'
 #define DOUBLE_QUOTE_CHAR '"'
 #define SINGLE_QUOTE_CHAR '"'
@@ -41,54 +41,72 @@ int main(void)
     int len;
     int linecount = 0;
     int inMultiLineComment = 0;
+    int multiLineCommentStartIndex;
+    int multiLineCommentEndIndex;
+    int singleLineCommentStartIndex;
     while ((len = getLine(line, MAXLINE)) > 0) {
         linecount++;
+        // printf("%d:", linecount);
+        multiLineCommentStartIndex = -1;
+        multiLineCommentEndIndex = -1;
+        singleLineCommentStartIndex = -1;
 
         // check for multi line comment start
         if (inMultiLineComment == 0)
         {
-            int multiLineCommentStartIndex = isMultiLineCommentStart(line, MAXLINE);
+            multiLineCommentStartIndex = isMultiLineCommentStart(line, MAXLINE);
             if (multiLineCommentStartIndex != -1)
             {
-
-
                 inMultiLineComment = 1;
-                // todo check if multi line comment end is on this line too
-                printchars(line, 0, multiLineCommentStartIndex); 
             } 
         }
-
-        // printf("in multiline comment? %d, line number: %d\n", inMultiLineComment, linecount);
-
 
         // case for in a multi line comment
         if (inMultiLineComment == 1)
         {
-            int multiLineCommentEndIndex = isMultiLineCommentEnd(line, MAXLINE);
+            multiLineCommentEndIndex = isMultiLineCommentEnd(line, MAXLINE);
             if (multiLineCommentEndIndex > -1)
             {
-                // printf("multi line comment end, %d, %s, \n", linecount, line);
                 inMultiLineComment = 0;
-                printchars(line, multiLineCommentEndIndex + 1, MAXLINE);
             }
-            clearLine(line, MAXLINE);
-            continue;
         }
 
-        // if we started a multi line comment, nothing else to do
-        if (inMultiLineComment == 1)
+        if (inMultiLineComment == 0)
         {
-            clearLine(line, MAXLINE);
-            continue;
+            singleLineCommentStartIndex = containsSingleLineComment(line, MAXLINE);
         }
 
+         // printf("single line comment start %d,", singleLineCommentStartIndex);
+         // printf("start %d, stop %d, multiline", multiLineCommentStartIndex, multiLineCommentEndIndex);
+         // printf("in multi line comment %d\n", inMultiLineComment);
 
-        int singleLineCommentStartIndex = containsSingleLineComment(line, MAXLINE);
+        // if we are in a multilinecomment, do nothing, just fall through to the end
+        if (inMultiLineComment == 0)
+        {
+            // line has a single line comment
+            if (singleLineCommentStartIndex != -1)
+            {
+                if (multiLineCommentStartIndex != -1)
+                    printchars(line, 0, multiLineCommentStartIndex);
+                if (multiLineCommentEndIndex != -1)
+                    printchars(line, multiLineCommentEndIndex + 1, singleLineCommentStartIndex);
+                else
+                    printchars(line, 0, singleLineCommentStartIndex);
 
-        if (singleLineCommentStartIndex == -1)
-            printchars(line, 0, MAXLINE);
-        else
-            printchars(line, 0, singleLineCommentStartIndex);
+            }
+            // line has a multiline comment start or end
+            else if (multiLineCommentStartIndex != -1 || multiLineCommentEndIndex != -1)
+            {
+                if (multiLineCommentStartIndex != -1)
+                    printchars(line, 0, multiLineCommentStartIndex);
+                if (multiLineCommentEndIndex != -1)
+                    printchars(line, multiLineCommentEndIndex + 1, MAXLINE);
+            }
+            else
+            {
+                printchars(line, 0, MAXLINE);
+            }
+        }
             
         clearLine(line, MAXLINE);
     }
@@ -97,7 +115,14 @@ int main(void)
 int printchars(char line[], int i, int end)
 {
     for (; i < end; i++)
+    {
+        if (line[i] == '\n')
+        {
+            // putchar('\n');
+            break;
+        }
         putchar(line[i]);
+    }
     putchar('\n');
     return 0;
 }
@@ -129,27 +154,38 @@ int containsSingleLineComment(char s[], int lim)
     int isInCharLiteral = 0;
     char lastchar = '\0';
     int commentStartIndex = -1;
+    int isLastCharEscape = 0;
     for (i=0; i<lim; ++i)
     {
         c = s[i]; 
+        if (c == '\n')
+            break;
+        if (isLastCharEscape == 1)
+        {
+            isLastCharEscape = 0;
+            continue;
+        }
         // we found an escape character, skip it
         if (c == ESCAPE_CHAR)
+        {
+            isLastCharEscape = 1;
             continue;
+        }
         if (c == SINGLE_QUOTE_CHAR)
         {
-            if (isInCharLiteral)
+            if (isInCharLiteral == 1)
                 isInCharLiteral = 0;
             else
                 isInCharLiteral = 1;
         }
         if (c == DOUBLE_QUOTE_CHAR)
         {
-            if (isInString)
+            if (isInString == 1)
                 isInString = 0;
             else
                 isInString = 1;
         }
-        if (c == '/' && lastchar == '/')
+        if (isInString == 0 && c == '/' && lastchar == '/')
             commentStartIndex = i-1;
         lastchar = c;
 
@@ -181,12 +217,23 @@ int isMultiLineCommentStart(char s[], int lim)
     int isInString = 0;
     int isInCharLiteral = 0;
     int multiLineCommentStartIndex = -1;
+    int isLastCharEscape = 0;
     for (i=0; i<lim; ++i)
     {
         c = s[i]; 
+        if (c == '\n')
+            break;
+        if (isLastCharEscape == 1)
+        {
+            isLastCharEscape = 0;
+            continue;
+        }
         // we found an escape character, skip it
         if (c == ESCAPE_CHAR)
+        {
+            isLastCharEscape = 1;
             continue;
+        }
         if (c == SINGLE_QUOTE_CHAR)
         {
             if (isInCharLiteral)
@@ -220,12 +267,21 @@ int isMultiLineCommentEnd(char s[], int lim)
     int isInString = 0;
     int isInCharLiteral = 0;
     int multiLineCommentEndIndex = -1;
+    int isLastCharEscape = 0;
     for (i=0; i<lim; ++i)
     {
         c = s[i]; 
+        if (isLastCharEscape == 1)
+        {
+            isLastCharEscape = 0;
+            continue;
+        }
         // we found an escape character, skip it
         if (c == ESCAPE_CHAR)
+        {
+            isLastCharEscape = 1;
             continue;
+        }
         if (c == SINGLE_QUOTE_CHAR)
         {
             if (isInCharLiteral)
